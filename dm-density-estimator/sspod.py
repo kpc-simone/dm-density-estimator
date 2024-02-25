@@ -18,14 +18,20 @@ class SinglescaleSSPOD(object):
         self.bias = bias
         self.norm = norm
     
+    def get_activities(self,phis):
+        A = ReLU(self.scaled_encoders,self.bias,phis)
+        if self.norm:
+            A /= cp.linalg.norm( A, axis = 1, ord = 1)[:,None]
+        return A
+    
     def fit(self,X,length_scale):
         
         domain_dim = X.shape[1]
         self.ssp_encoder = RandomSSPSpace( domain_dim = domain_dim, ssp_dim = 1024, length_scale = length_scale )
 
         phis = self.ssp_encoder.encode(X)
+        A = self.get_activities(phis)
 
-        A = ReLU(self.scaled_encoders,self.bias,phis)
         self.rho_actual = ( A > 0 ).mean()
         
         self.w = cp.mean( A, axis = 0 )
@@ -33,11 +39,10 @@ class SinglescaleSSPOD(object):
         
         return self
 
-    
     def predict(self,X):
         
         phis = self.ssp_encoder.encode(X)
-        A = ReLU(self.scaled_encoders,self.bias,phis)
+        A = self.get_activities(phis)
         self.scores = A @ self.w
         
         return self
@@ -45,17 +50,8 @@ class SinglescaleSSPOD(object):
     def get_scores(self):
         return self.scores.get()
         
-    def get_labels(self, contamination = 0.1, method = 'log'):
-
-        # TODO: load these curve fitting params from a file and pass at build time
-        if method == 'log':
-            a = 1.48113569
-            p = 0.3187553
-            b = -3.58892504
-            self.threshold = 10**( a * cp.power(contamination,p) + b )
-            self.labels = self.scores < self.threshold
-            return self.threshold,self.labels
-        elif method == 'quantile-cpu':
+    def get_labels(self, contamination = 0.1, method = 'quantile-cpu'):
+        if method == 'quantile-cpu':
             scores_cpu = self.scores.get()
             self.threshold = np.quantile(scores_cpu, q = contamination )
             self.labels = scores_cpu < self.threshold

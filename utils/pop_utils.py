@@ -4,6 +4,8 @@ import numpy as np
 import scipy
 import os
 
+import pickle
+
 import matplotlib.pyplot as plt
 
 def sparsity_to_x_intercept(d, p):
@@ -73,13 +75,11 @@ def sample_bundle_encoders( domain_bounds, ssp_encoder, n_neurons, normalize = T
     
 def load_pop_props( pop_props_obj_filepath ):
     
-    pop_props_obj = np.load( pop_props_obj_filepath,allow_pickle=True )
+    pop_props_obj = np.load( pop_props_obj_filepath )
     
-    # rho_actual
     filename = os.path.basename(pop_props_obj_filepath)
     rho_specified = float( filename[ filename.find('rho') + 4: ].split('-')[0] )
-    # print(filename,'; rho_specified: ', rho_specified)
-    
+
     scaled_encoders = cp.array( pop_props_obj['scaled_encoders'] )
     bias = cp.array( pop_props_obj['bias'] )
     
@@ -91,14 +91,13 @@ def load_pop_props( pop_props_obj_filepath ):
 
 def load_pop_props_encoder( pop_props_obj_filepath ):
     
-    pkl_obj = pickle.load( file = open(filepath,'rb') )
-    
-    ssp_encoder = pop_props_obj['ssp_encoder'].astype(int)
+    pop_props_obj = pickle.load( file = open(pop_props_obj_filepath,'rb') )
+    ssp_encoder = pop_props_obj['ssp_encoder']
     
     scaled_encoders = cp.array( pop_props_obj['scaled_encoders'] )
     bias = cp.array( pop_props_obj['bias'] )
     xi_final = pop_props_obj['xi_final'].astype(float)
-    n_neurons = pop_props_obj['n_neurons'].astype(int)
+    n_neurons = pop_props_obj['n_neurons']
     
     return scaled_encoders,bias,ssp_encoder,xi_final,n_neurons
 
